@@ -60,6 +60,14 @@ const App = () => {
         }, 5000)
 
       })
+      .catch(err => {
+        console.log('error creating person', err)
+        setMessage(
+          {
+            text:`${err.response.data.error}`
+          }
+        )
+      })
     }
   }
 

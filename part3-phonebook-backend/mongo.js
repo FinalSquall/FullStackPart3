@@ -10,22 +10,22 @@ mongoose.set('strictQuery',false)
 
 
 if (process.argv.length<3) {
-    Person.find({}).then(result => {
-        result.forEach(person => {
-          console.log(`${person.name} ${person.number}`)
-        })
-        mongoose.connection.close()
-      })
-} else {
-    const person = new Person({
-        name: `${name}`,
-        number: `${num}`,
+  Person.find({}).then(result => {
+    result.forEach(person => {
+      console.log(`${person.name} ${person.number}`)
     })
+    mongoose.connection.close()
+  })
+} else {
+  const person = new Person({
+    name: `${name}`,
+    number: `${num}`,
+  })
 
-    person.save().then(result => {
+  person.save().then(() => {
     console.log(`Added ${person.name} with the number ${person.number} to the phonebook`)
     mongoose.connection.close()
-    })
+  })
 }
 
 

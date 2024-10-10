@@ -1,32 +1,25 @@
 const express = require('express')
 const morgan = require('morgan')
 const cors = require('cors')
-const person = require('./model/person')
 const app = express()
 require('dotenv').config()
 
 const Person = require('./model/person')
 
-const MAX_PERSONS = 1000000
-
 let phonebook = []
-
-const requestLogger = {
-
-}
 
 /*
   PRE ROUTE MIDDLEWARE
 */
 
-morgan.token('contentToken', function (req, res) { return JSON.stringify(req.body)})
+morgan.token('contentToken', function (req) { return JSON.stringify(req.body)})
 
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :contentToken', {
-    skip: function (req, res) { return req.method !== 'POST' }
+  skip: function (req) { return req.method !== 'POST' }
 }))
 
 app.use(morgan('tiny', {
-    skip: function (req, res) { return req.method === 'POST' }
+  skip: function (req) { return req.method === 'POST' }
 }))
 
 app.use(express.static('dist'))
@@ -54,7 +47,7 @@ app.get('/info', (request, response,next) => {
     console.log('GO_TEST',p)
     response.send(`<div><p>The phonebook contains ${p} entries</p><p>${new Date()}</p></div>`)
   })
-  .catch(er => next(er))
+    .catch(er => next(er))
 })
 
 app.get('/api/persons/:id', (request, response,next) => {
@@ -65,19 +58,17 @@ app.get('/api/persons/:id', (request, response,next) => {
       response.status(404).end()
     }
   })
-  .catch(error => {next(error)})
+    .catch(error => {next(error)})
 })
 
 app.post('/api/persons', (request, response,next) => {
   const body = request.body
 
   if (body.name === undefined) { //Was busy with other things and return to the course after some time. I am going to assume empty number was valid (cant remember)
-        return response.status(400).json({error:'Request data missing.'})
+    return response.status(400).json({ error:'Request data missing.' })
   }
 
   validateBody(body)
-
-  const id = generateId()
 
   const person = new Person({
     name:body.name,
@@ -87,14 +78,14 @@ app.post('/api/persons', (request, response,next) => {
   person.save().then(savedPerson => {
     response.json(savedPerson)
   })
-  .catch(er => next(er))
+    .catch(er => next(er))
 })
 
-app.delete('/api/persons/:id', (request, response) => {
-  Person.findByIdAndDelete(request.params.id).then(person => {
+app.delete('/api/persons/:id', (request, response,next) => {
+  Person.findByIdAndDelete(request.params.id).then(() => {
     response.status(204).end()
   })
-  .catch(ex => next(ex))
+    .catch(er => next(er))
 })
 
 app.put('/api/persons/:id',(request,response,next) => {
@@ -105,14 +96,14 @@ app.put('/api/persons/:id',(request,response,next) => {
     number:body.number
   }
 
-  Person.findByIdAndUpdate(request.params.id,person,{new:true})
-  .then(update => {
+  Person.findByIdAndUpdate(request.params.id,person,{ new:true, runValidators:true, context:'query' })
+    .then(update => {
       response.json(update)
-  })
-  .catch(er => next(er))
+    })
+    .catch(er => next(er))
 })
 
-/* 
+/*
     END ROUTES
 */
 
@@ -130,6 +121,8 @@ const errorHandler = (error,request,response,next) => { //If the next function i
   console.log('error_handler_middleware_call ',error.message)
   if (error.name === 'CastError') {
     return response.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === 'ValidationError') {
+    return response.status(400).json({ error:error.message })
   }
 
   next(error)
@@ -142,31 +135,18 @@ app.use(errorHandler)
 */
 
 const validateBody = (body) => {
-    if (!body.name) {
-        return {error: 'Phonebook user must have a name' }
-    }
+  if (!body.name) {
+    return { error: 'Phonebook user must have a name' }
+  }
 
-    if (!body.number) {
-        return {error:'Phonebook user must have a number'}
-    }
+  if (!body.number) {
+    return { error:'Phonebook user must have a number' }
+  }
 
-    if (phonebook.find(person => person.name === body.name)) {
-        return {error:'Cannot add a user with the same name'}
-    }
-    return {success:true}
-}
-
-
-function generateId() {
-    let i = Math.floor(Math.random() * MAX_PERSONS)
-    if (phonebook.length === MAX_PERSONS) {
-        return -1
-    }
-    if (phonebook.map(p => Number(p.id)).filter(id => id === i).length > 0) {
-        console.log(`Duplicate id: ${i} regenerating id.`)
-        return generateId()
-    }
-    return i.toString()
+  if (phonebook.find(person => person.name === body.name)) {
+    return { error:'Cannot add a user with the same name' }
+  }
+  return { success:true }
 }
 
 const PORT = process.env.PORT
